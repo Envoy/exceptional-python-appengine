@@ -1,7 +1,6 @@
 from cStringIO import StringIO
 import datetime
 import gzip
-import logging
 import os
 import sys
 import traceback
@@ -57,14 +56,12 @@ class Exceptional(object):
     def submit(self, exc, class_name=None, func_name=None, request=None):
         """Submit the exception to exceptional
         """
-        info = {}
 
         try:
+            info = {}
             info.update(self.request_info(class_name, func_name, request))
             info.update(self.environment_info())
             info.update(self.exception_info(exc, sys.exc_info()[2]))
-
-            logging.debug(info)
 
             payload = self.compress(json.dumps(info))
             headers = {}
@@ -72,7 +69,6 @@ class Exceptional(object):
             headers['Content-Type'] = 'application/json'
 
             result = urlfetch.fetch(self.api_endpoint, deadline=self.deadline, payload=payload, method=urlfetch.POST, headers=headers)
-            logging.debug('exceptional post result:' + str(result.status_code))
         except Exception, e:
             raise Exception("Cannot submit %s because of %s" % (info, e), e)
 
