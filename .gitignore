@@ -8,3 +8,4 @@ dist
 MANIFEST
 test/example/*.sqlite3
 test/example/exceptional.key
+*.tmproj
