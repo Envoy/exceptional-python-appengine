@@ -1,18 +1,17 @@
-# exceptional-python
+# exceptional-python-appengine
 
 `exceptional-python-appengine` is a python appengine client for [Exceptional][], a service which
 tracks errors in your web apps.
 
   [exceptional]: http://www.exceptional.io/
 
-It is adapted from `exceptional-python` by removing dependencies to `pylons`.
-https://github.com/joshfire/exceptional-python
+It is adapted from `exceptional-python`. https://github.com/joshfire/exceptional-python
 
 ## Usage
 
 Send exception directly
 
-    exceptional = Exceptional('YOUR_API_KEY_HERE', deadline=optional_deadline_in_seconds)
+    exceptional = Exceptional('YOUR_API_KEY_HERE', deadline=optional_urlfetch_deadline_in_seconds)
     try:
       1/0
     except Exception as e:

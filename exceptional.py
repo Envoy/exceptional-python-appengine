@@ -15,7 +15,7 @@ try:
 except ImportError:
     import simplejson as json
 
-__version__ = '0.0.2'
+__version__ = '0.1.0'
 
 EXCEPTIONAL_PROTOCOL_VERSION = 6
 EXCEPTIONAL_API_ENDPOINT = "http://api.getexceptional.com/api/errors"
@@ -42,7 +42,7 @@ def memoize(func):
 
 class Exceptional(object):
 
-    def __init__(self, api_key, deadline=15):
+    def __init__(self, api_key, deadline=5):
         self.deadline = deadline
 
         try:
@@ -97,9 +97,11 @@ class Exceptional(object):
         info = {}
         info['request'] = {}
 
+        # use class_name to mimic Ruby controller
         if class_name:
             info['request']['controller'] = class_name
 
+        # use func_name to mimic Ruby action
         if func_name:
             info['request']['action'] = func_name
 
@@ -133,7 +135,7 @@ class Exceptional(object):
                     "application_root_directory": self.project_root()
                     },
                 "client": {
-                    "name": "appengine-exceptional",
+                    "name": "exceptional-python-appengine",
                     "version": __version__,
                     "protocol_version": EXCEPTIONAL_PROTOCOL_VERSION
                     }
