@@ -3,7 +3,7 @@
 `exceptional-python-appengine` is a python appengine client for [Exceptional][], a service which
 tracks errors in your web apps.
 
-  [exceptional]: http://www.exceptional.io/
+  [exceptional]: http://www.exceptional.io
 
 It is adapted from `exceptional-python`. https://github.com/joshfire/exceptional-python
 
