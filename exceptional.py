@@ -7,24 +7,24 @@ import sys
 import traceback
 import types
 import urllib
-import urllib2
+
+from google.appengine.api import urlfetch
 
 try:
     import json
 except ImportError:
     import simplejson as json
 
-__version__ = '0.2.1'
+__version__ = '0.0.2'
 
 EXCEPTIONAL_PROTOCOL_VERSION = 6
 EXCEPTIONAL_API_ENDPOINT = "http://api.getexceptional.com/api/errors"
-
 
 def memoize(func):
     """A simple memoize decorator (with no support for keyword arguments)."""
 
     cache = {}
-    
+
     def wrapper(*args):
         if args in cache:
             return cache[args]
@@ -41,15 +41,9 @@ def memoize(func):
 
 
 class Exceptional(object):
-    """
-    Middleware to interface with the Exceptional service.
 
-    Requires very little intervention on behalf of the user; you just need to
-    add `exceptional.api_key` to your pylons settings.
-    """
-
-    def __init__(self, api_key):
-        self.active = False
+    def __init__(self, api_key, deadline=15):
+        self.deadline = deadline
 
         try:
             self.api_key = api_key
@@ -57,32 +51,30 @@ class Exceptional(object):
                     "api_key": self.api_key,
                     "protocol_version": EXCEPTIONAL_PROTOCOL_VERSION
                     })
-            self.active = True
         except AttributeError:
             pass
 
-    def submit(self, exc, environ):
-        """Submit the actual exception to getexceptional
+    def submit(self, exc, class_name=None, func_name=None, request=None):
+        """Submit the exception to exceptional
         """
         info = {}
-        conn = None
 
         try:
+            info.update(self.request_info(class_name, func_name, request))
             info.update(self.environment_info())
             info.update(self.exception_info(exc, sys.exc_info()[2]))
 
-            payload = self.compress(json.dumps(info))
-            req = urllib2.Request(self.api_endpoint, data=payload)
-            req.headers['Content-Encoding'] = 'gzip'
-            req.headers['Content-Type'] = 'application/json'
+            logging.debug(info)
 
-            conn = urllib2.urlopen(req)
-            resp = conn.read()
+            payload = self.compress(json.dumps(info))
+            headers = {}
+            headers['Content-Encoding'] = 'gzip'
+            headers['Content-Type'] = 'application/json'
+
+            result = urlfetch.fetch(self.api_endpoint, deadline=self.deadline, payload=payload, method=urlfetch.POST, headers=headers)
+            logging.debug('exceptional post result:' + str(result.status_code))
         except Exception, e:
             raise Exception("Cannot submit %s because of %s" % (info, e), e)
-        finally:
-            if conn is not None:
-                conn.close()
 
     @staticmethod
     def compress(bytes):
@@ -100,6 +92,28 @@ class Exceptional(object):
         finally:
             stream.close()
 
+    # http://docs.exceptional.io/api/publish/
+    def request_info(self, class_name, func_name, request):
+        info = {}
+        info['request'] = {}
+
+        if class_name:
+            info['request']['controller'] = class_name
+
+        if func_name:
+            info['request']['action'] = func_name
+
+        if request:
+            info['request']['request_method'] = request.method
+            info['request']['parameters'] = dict(request.params)
+            info['request']['url'] = request.url
+            info['request']['headers'] = dict(request.headers)
+
+        # doesn't seem to show up anywhere in the dashboard
+        info['request']['remote_ip'] = 'NOT IMPLEMENTED'
+
+        return info
+
     @memoize
     def environment_info(self):
         """
@@ -112,14 +126,14 @@ class Exceptional(object):
 
         return {
                 "application_environment": {
-                    "framework": "pylons",
+                    "framework": "appengine",
                     "env": dict(os.environ),
                     "language": "python",
                     "language_version": sys.version.replace('\n', ''),
                     "application_root_directory": self.project_root()
                     },
                 "client": {
-                    "name": "pylons-exceptional",
+                    "name": "appengine-exceptional",
                     "version": __version__,
                     "protocol_version": EXCEPTIONAL_PROTOCOL_VERSION
                     }
@@ -168,58 +182,3 @@ class Exceptional(object):
             if "password" in key:
                 del params[key]
         return params
-
-
-class ExceptionalLogHandler(logging.Handler):
-    """Handler for reporting to Exceptional
-
-    The way you'll want to use it in code:
-
-        import logging
-
-        log = logging.getLogger("mylog")
-        # ... <snip> all the other handlers you're adding to your logger... #
-        exceptional_handler = ExceptionalLogHandler(api_key, debug_mode)
-        exceptional_handler.setLevel(logging.CRITICAL)
-        log.addHandler(exceptional_handler)
-
-    After that, whenever you log something critical() or fatal() in your logger,
-    ExceptionalLogHandler will report the exception being handled.
-
-    I've disabled the ability to log errors in the process of trying to hit
-    Exceptional. It's too easy for people to pass in the logger they're using,
-    not set the Handler level high enough, and get caught in an infinite loop.
-    But it can we re-enabled by removing the commented portions below.
-    """
-
-    def __init__(self, api_key, debug_mode=False, append_log_messages=False): # , log=None):
-        """API key is the key to the Exceptional service and should be in the
-        dogweb.ini config file. If debug is True, we'll just output to local
-        logs and not really report things to Exceptional"""
-        logging.Handler.__init__(self)
-        self._api_key = api_key
-        self._debug_mode = debug_mode
-        self.append_log_messages = append_log_messages
-
-        # self._log = log if log else logging
-
-    def emit(self, record):
-        if self._debug_mode:
-            # self._log.info("ExceptionalLogHandler in debug mode, not reporting")
-            pass
-
-        if not self._debug_mode:
-            try:
-                exceptional = Exceptional(self._api_key)
-
-                if exceptional.active:
-                    # make an extra version of this that takes things implicitly
-                    e = sys.exc_info()[1]
-                    if self.append_log_messages:
-                        e.args += record.message,
-                    exceptional.submit(e, os.environ)
-            except:
-                # self._log.warning("ExceptionalLogHandler: Error submitting exception to getexceptional")
-                # self._log.warning(traceback.format_exc())
-                # print traceback.format_exc()
-                pass

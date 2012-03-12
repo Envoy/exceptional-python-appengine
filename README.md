@@ -1,32 +1,24 @@
 # exceptional-python
 
-`exceptional-python` is a python client for [Exceptional][], a service which
+`exceptional-python-appengine` is a python appengine client for [Exceptional][], a service which
 tracks errors in your web apps.
 
-  [exceptional]: http://getexceptional.com
+  [exceptional]: http://www.exceptional.io/
 
-It is adapted from `pylons-exceptional` by removing dependencies to `pylons`.
+It is adapted from `exceptional-python` by removing dependencies to `pylons`.
+https://github.com/joshfire/exceptional-python
 
 ## Usage
 
 Send exception directly
 
-    exceptional = Exceptional('YOUR_API_KEY_HERE')
+    exceptional = Exceptional('YOUR_API_KEY_HERE', deadline=optional_deadline_in_seconds)
     try:
       1/0
     except Exception as e:
-      exceptional.submit(e, os.environ)
+      # optional parameters to get more info on the dashboard for your exception
+	  class_name = 'MyAwesomeClass' # mimics 'controller' from Ruby implementation
+	  func_name = 'do_something_sweet' # mimics 'action' from Ruby implementation
+	  request = None # pass in self.request if calling directly from a webapp.RequestHandler
+      exceptional.submit(e, class_name=class_name, func_name=func_name, request=request)
       raise
-
-or, use log handler
-
-    import logging
-    logger = logging.getLogger(__name__)
-    handler = ExceptionalLogHandler('YOUR_API_KEY_HERE')
-    handler.setLevel(logging.ERROR)
-    logger.addHandler(handler)
-    
-    try:
-      1/0
-    except:
-      logger.error('oops!')
