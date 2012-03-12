@@ -27,6 +27,6 @@ With optional parameters
   		# optional parameters to get more info on the dashboard for your exception
   		class_name = 'MyAwesomeClass' # mimics 'controller' from Ruby implementation
   		func_name = 'do_something_sweet' # mimics 'action' from Ruby implementation
-  		request = None # pass in self.request if calling directly from a webapp.RequestHandler
+  		request = self.request # the http request if you are submitting from a webapp.RequestHandler
   		exceptional.submit(e, class_name=class_name, func_name=func_name, request=request)
   		raise
