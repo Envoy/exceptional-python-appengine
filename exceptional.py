@@ -17,7 +17,7 @@ except ImportError:
 __version__ = '0.1.0'
 
 EXCEPTIONAL_PROTOCOL_VERSION = 6
-EXCEPTIONAL_API_ENDPOINT = "http://api.getexceptional.com/api/errors"
+EXCEPTIONAL_API_ENDPOINT = "http://api.exceptional.io/api/errors"
 
 def memoize(func):
     """A simple memoize decorator (with no support for keyword arguments)."""
@@ -122,10 +122,15 @@ class Exceptional(object):
         requests.
         """
 
+        env_dict = dict(os.environ)
+        # these values are not json serializable, so remove before submit
+        env_dict['wsgi.input'] = 'REMOVED_BEFORE_SUBMIT'
+        env_dict['wsgi.errors'] = 'REMOVED_BEFORE_SUBMIT'
+
         return {
                 "application_environment": {
                     "framework": "appengine",
-                    "env": dict(os.environ),
+                    "env": env_dict,
                     "language": "python",
                     "language_version": sys.version.replace('\n', ''),
                     "application_root_directory": self.project_root()
@@ -170,13 +175,3 @@ class Exceptional(object):
         """
 
         return os.path.dirname(__file__)
-
-    @staticmethod
-    def filter_params(params):
-        """Filter sensitive information out of parameter dictionaries.
-        """
-
-        for key in params.keys():
-            if "password" in key:
-                del params[key]
-        return params
